@@ -31,6 +31,7 @@ class WfcManager {
     connectionStatus = 0;
     userId = '';
     token = '';
+    users = new Map();
 
     // TODO 移除吧，全都走EventEmitter
     // onReceiveMessageListeners = [];
@@ -70,8 +71,12 @@ class WfcManager {
     // }
 
     onReceiveMessage(messages, hasMore) {
+        // receiving
+        if (self.connectionStatus === 2) {
+            return;
+        }
         var msgs = JSON.parse(messages);
-        msgs.map(m => {
+        msgs.forEach(m => {
             let msg = Message.fromProtoMessage(m);
             // self.onReceiveMessageListeners.forEach(listener => {
             //     listener(msg, hasMore);
@@ -97,7 +102,7 @@ class WfcManager {
     }
 
     onRecallMessage(operatorUid, messageUid) {
-        self.eventEmitter.emit(EventType.ReceiveMessage, operatorUid, messageUid);
+        self.eventEmitter.emit(EventType.RecallMessage, operatorUid, messageUid);
     }
 
     onMessageDeleted(messageId) {
@@ -105,15 +110,20 @@ class WfcManager {
     }
 
     onUserInfoUpdate(userIds) {
-        console.log('userIndo update, ids', userIds);
-        let userIdA = JSON.parse(userIds);
-        userIdA.map((userId => {
+        let userIdArray = JSON.parse(userIds);
+
+        userIdArray.forEach((userId => {
+            self.users.delete(userId);
             self.eventEmitter.emit(EventType.UserInfoUpdate, userId);
         }))
     }
 
     onFriendListUpdate(friendListIds) {
         console.log('friendList update, ids', friendListIds);
+        let ids = JSON.parse(friendListIds);
+        ids.forEach((uid) => {
+            self.users.delete(uid);
+        });
         self.eventEmitter.emit(EventType.FriendListUpdate, friendListIds);
     }
 
@@ -143,11 +153,26 @@ class WfcManager {
     }
 
     async connect(userId, token) {
-        this.userId = userId;
+        self.userId = userId;
         proto.connect(userId, token);
 
         // for testing your code
         self.test();
+    }
+
+    disconnect() {
+        self.userId = '';
+        proto.disconnect(0);
+
+
+        //sleep 1 second wait disconnect with im server
+        var now = new Date();
+        var exitTime = now.getTime() + 1000;
+        while (true) {
+            now = new Date();
+            if (now.getTime() > exitTime)
+                return;
+        }
     }
 
     registerDefaultMessageContents() {
@@ -162,7 +187,7 @@ class WfcManager {
     }
 
     getUserId() {
-        return this.userId;
+        return self.userId;
     }
 
     getServerDeltaTime() {
@@ -199,12 +224,23 @@ class WfcManager {
         if (!userId || userId === '') {
             return new NullUserInfo('');
         }
+        let userInfo;
+        if (!fresh) {
+            userInfo = self.users.get(userId);
+            if (userInfo) {
+                return userInfo;
+            }
+        }
+
+        console.log('getuserInfo', userId);
         let userInfoStr = proto.getUserInfo(userId, fresh);
         if (userInfoStr === '') {
-            return new NullUserInfo(userId);
+            userInfo = new NullUserInfo(userId);
         } else {
-            return Object.assign(new UserInfo(), JSON.parse(userInfoStr));
+            userInfo = Object.assign(new UserInfo(), JSON.parse(userInfoStr));
         }
+        self.users.set(userInfo.uid, userInfo);
+        return userInfo;
     }
 
     async searchUser(keyword, successCB, failCB) {
@@ -377,7 +413,7 @@ class WfcManager {
 
     addGroupMembers(groupId, memberIds, notifyLines, notifyMessageContent, successCB, failCB) {
         if (!notifyMessageContent) {
-            notifyMessageContent = new AddGroupMemberNotification(this.getUserId(), memberIds);
+            notifyMessageContent = new AddGroupMemberNotification(self.getUserId(), memberIds);
         }
         let payload = notifyMessageContent.encode();
         let notifyContentStr = JSON.stringify(payload);
@@ -395,7 +431,7 @@ class WfcManager {
     }
 
     getGroupMemberIds(groupId, fresh = false) {
-        let groupMembers = this.getGroupMembers(groupId, fresh);
+        let groupMembers = self.getGroupMembers(groupId, fresh);
         var groupMemberIds = [];
         groupMembers.forEach(e => {
             groupMemberIds.push(e.memberId);
@@ -534,6 +570,7 @@ class WfcManager {
 
     modifyMyInfo() {
         // TODO
+        self.users.delete(self.getUserId())
     }
 
     isGlobalSlient() {

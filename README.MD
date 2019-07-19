@@ -1,6 +1,6 @@
 ## 野火IM解决方案
 
-野火IM是一套跨平台、全开源的即时通讯解决方案，主要包含以下内容。
+野火IM是一套跨平台开源的即时通讯解决方案，主要包含以下内容。
 
 | 仓库                                                         | 说明                                                    | 备注 |
 | ------------------------------------------------------------ | ------------------------------------------------------- | ---- |
@@ -13,7 +13,7 @@
 | [robot_server](https://github.com/wildfirechat/robot_server) | 机器人服务端Demo                                        |      |
 | [push_server](https://github.com/wildfirechat/push_server)   | 推送服务器                                              |      |
 | [docs](https://github.com/wildfirechat/docs)                 | 野火IM相关文档，包含设计、概念、开发、使用说明          |      |
-
+> 上述仓库中只有PC有个功能库没有开源需要授权才能使用，其它代码全部开源。详细说明请参加[费用](http://docs.wildfirechat.cn/#费用)
 
 ## pc-chat说明
 
@@ -54,6 +54,7 @@
 
 #### mac系统
 开发
+
 ```
 $ cp proto_addon/marswrapper.mac.node marswrapper.node
 $ npm install
@@ -63,29 +64,40 @@ $ npm run dev
 打包
 
 1. ```npm install``` 安装依赖
-2. ```npm run package-win32``` 打包window版本，软件生成在release目录下
-3. ```npm run package-mac``` 打包mac版本，软件生成在release目录下
+2. ```npm install -g dmg-builder``` 安装dmg builder
+3. ```npm run package-win32``` 打包window版本，软件生成在release目录下
+4. ```npm run package-mac``` 打包mac版本，软件生成在release目录下
 
 
 #### windows系统
-拷贝windows配置
+
+##### 环境准备：
+
+1. nodejs10.16.0
+2. python2.7
+3. Visual Studio Community 2015(C++ Runtime & Windows SDK version 8.1)
+4. npm install -g node-gyp
+
+##### 拷贝windows配置
 把```package-win32.json```改名为```package.json```。
 
-开发(目前还有问题，请打包安装使用)
+##### 开发(目前还有问题，请打包安装验证)
 ```
 $ copy proto_addon\marswrapper.win32.node marswrapper.node
 $ npm install
 $ npm run dev
 ```
 
-打包
+##### 打包
 0. 把```package-win32.json```改名为```package.json```。
 1. ```npm install``` 安装依赖
 2. ```npm run package-win32``` 打包window版本，软件生成在release目录下
 
 > mac下能打包出windows版本和mac版本。windows下只能打包出windows版本
 
-
+##### 常见问题
+windows上需要严格按照环境进行安装，mac上环境比较简单一些，安装node和node-gyp就可以了
+另外如果还有问题，请试试命令```npm cache clean --force ```
 
 更多信息，请查看[wewechat readme](./README_wewechat.MD)
 

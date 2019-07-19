@@ -351,7 +351,15 @@ let trayMenu = [
         click() {
             forceQuit = true;
             mainWindow = null;
-            // app.quit();
+            global.sharedObj.proto.disconnect(0);
+            console.log('--------------- disconnect', global.sharedObj.proto);
+            var now = new Date();
+            var exitTime = now.getTime() + 1000;
+            while (true) {
+                now = new Date();
+                if (now.getTime() > exitTime)
+                    break;
+            }
             app.exit(0);
         }
     }
@@ -460,7 +468,9 @@ function updateTray(unread = 0) {
     } else {
         if (!tray) return;
 
-        tray.destroy();
+        if (!isOsx) {
+          tray.destroy();
+        }
         tray = null;
     }
 
@@ -773,7 +783,9 @@ app.on('ready', createMainWindow);
 app.on('before-quit', () => {
     // Fix issues #14
     forceQuit = true;
-    tray.destroy();
+    if (!isOsx) {
+      tray.destroy();
+    }
 });
 app.on('activate', e => {
     if (!mainWindow.isVisible()) {

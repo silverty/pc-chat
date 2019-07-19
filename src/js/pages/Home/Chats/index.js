@@ -1,14 +1,13 @@
 
-import React, { Component } from 'react';
-import { inject, observer } from 'mobx-react';
 import { remote } from 'electron';
-import clazz from 'classname';
+import { inject, observer } from 'mobx-react';
 import moment from 'moment';
-import helper from 'utils/helper';
-
+import React, { Component } from 'react';
+import EventType from '../../../wfc/wfcEvent';
+import ConversationItem from './conversationItem';
 import classes from './style.css';
-import EventType from '../../../wfc/wfcEvent'
 import ConversationType from '../../../wfc/model/conversationType';
+
 
 moment.updateLocale('en', {
     relativeTime: {
@@ -34,6 +33,7 @@ moment.updateLocale('en', {
     searching: stores.search.searching,
     event: stores.wfc.eventEmitter,
     loadConversations: stores.sessions.loadConversations,
+    reloadConversation: stores.sessions.reloadConversation,
 }))
 @observer
 export default class Chats extends Component {
@@ -92,14 +92,20 @@ export default class Chats extends Component {
     }
 
     onSendMessage = (msg) => {
+        // if (this.props.conversation.equal(msg.conversation)) {
+        //     this.props.reloadConversation(msg.conversation);
+        // }
+        // this.props.reloadConversation(msg.conversation);
         this.props.loadConversations();
     }
 
     onReceiveMessage = (msg) => {
+        // this.props.reloadConversation(msg.conversation);
         this.props.loadConversations();
     }
 
-    onConversationInfoUpdate = (covnersationInfo) => {
+    onConversationInfoUpdate = (conversationInfo) => {
+        // this.props.reloadConversation(conversationInfo.conversation);
         this.props.loadConversations();
     }
 
@@ -115,7 +121,30 @@ export default class Chats extends Component {
         this.props.loadConversations();
     }
 
+    onConnectionStatusChange = () => {
+        // if (status === 1) {
+        //     this.props.loadConversations();
+        // }
+    }
+
+    onUserInfoUpdate = (userId) => {
+        this.props.chats.map((c, index) => {
+            if (c.conversation.conversationType === ConversationType.Single && c.conversation.target === userId) {
+                this.props.reloadConversation(c.conversation);
+            }
+        });
+    }
+
+    onGroupInfoUpdate = (groupId) => {
+        this.props.chats.map((c, index) => {
+            if (c.conversation.conversationType === ConversationType.Group && c.conversation.target === groupId) {
+                this.props.reloadConversation(c.conversation);
+            }
+        });
+    }
+
     componentWillMount() {
+        console.log('componentWillMount');
         this.props.loadConversations();
         this.props.event.on(EventType.ReceiveMessage, this.onReceiveMessage);
         this.props.event.on(EventType.SendMessage, this.onSendMessage);
@@ -123,6 +152,13 @@ export default class Chats extends Component {
         this.props.event.on(EventType.RecallMessage, this.onRecallMessage);
         this.props.event.on(EventType.DeleteMessage, this.onRecallMessage);
         this.props.event.on(EventType.SettingUpdate, this.onSettingUpdate);
+        this.props.event.on(EventType.ConnectionStatusChanged, this.onConnectionStatusChange);
+        this.props.event.on(EventType.UserInfoUpdate, this.onUserInfoUpdate);
+        this.props.event.on(EventType.GroupInfoUpdate, this.onGroupInfoUpdate);
+
+        setTimeout(() => {
+            this.props.loadConversations();
+        }, 200)
     }
 
     componentWillUnmount() {
@@ -168,68 +204,12 @@ export default class Chats extends Component {
                     ref="container">
                     {
                         !searching && chats.map((e, index) => {
-                            // let conversationInfo = wfc.getConversationInfo(e);
-                            var muted = e.isSilent;
-                            var isTop = e.isTop;
-                            let unreadCount = e.unreadCount;
-                            let hasUnread = unreadCount.unread > 0 || unreadCount.unreadMention > 0 || unreadCount.unreadMentionAll > 0;
-                            var portrait = e.portrait();
-                            let txtUnread = unreadCount.unread > 99 ? "..." : unreadCount.unread;
-
-                            if (!portrait) {
-                                switch (e.conversation.conversationType) {
-                                    case ConversationType.Single:
-                                        portrait = 'assets/images/user-fallback.png';
-                                        break;
-                                    case ConversationType.Group:
-                                        portrait = 'assets/images/default_group_avatar.png';
-                                        break;
-                                    default:
-                                        break;
-                                }
-                            }
-
                             return (
-                                <div
-                                    className={clazz(classes.chat, {
-                                        [classes.sticky]: isTop,
-                                        [classes.active]: conversation && conversation.equal(e.conversation)
-                                    })}
-                                    // TODO key should be conversation
-                                    key={index}
-                                    onContextMenu={ev => this.showContextMenu(e)}
-                                    onClick={ev => chatTo(e.conversation)}>
-                                    <div className={classes.inner}>
-                                        <div data-aftercontent={txtUnread} className={clazz(classes.dot, {
-                                            [classes.green]: muted && hasUnread,
-                                            [classes.red]: !muted && hasUnread
-                                        })}>
-                                            <img
-                                                className="disabledDrag"
-                                                // TODO portrait
-                                                src={portrait}
-                                                onError={e => (e.target.src = 'assets/images/user-fallback.png')}
-                                            />
-                                        </div>
-
-                                        <div className={classes.info}>
-                                            <p
-                                                className={classes.username}
-                                                dangerouslySetInnerHTML={{ __html: e.title() }} />
-
-                                            <span
-                                                className={classes.message}
-                                                dangerouslySetInnerHTML={{ __html: e.lastMessage ? e.lastMessage.messageContent.digest() : '' }} />
-                                        </div>
-                                    </div>
-
-                                    <span className={classes.times}>
-                                        {
-                                            e.timestamp ? helper.timeFormat(e.timestamp) : ''
-                                        }
-                                    </span>
+                                <div key={e.conversation.target}>
+                                    <ConversationItem key={e.conversation.target} chatTo={chatTo} currentConversation={conversation} conversationInfo={e} />
                                 </div>
-                            );
+                            )
+                            // return <this.conversationItem key={e.conversation.target} chatTo={chatTo} currentConversation={conversation} conversationInfo={e} />
                         })
                     }
                 </div>
